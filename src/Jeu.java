@@ -11,13 +11,13 @@ public class Jeu {
         sac = new Sac();
         scanner = new Scanner(System.in);
         connecterBD();
-        choisirBouftou(); 
+        choisirBouftou();
     }
 
     private void connecterBD() {
         try {
-            String url = "jdbc:mysql://localhost:3306/Tamagotchi_Bouftou?useSSL=false&serverTimezone=UTC";
-            String user = "root"; 
+            String url = "jdbc:mysql://localhost:3306/tamagotchi_bouftou?useSSL=false&serverTimezone=UTC";
+            String user = "root";
             String password = "motdepassesqlpourroot";
             conn = DriverManager.getConnection(url, user, password);
             System.out.println("Connexion à MySQL réussie.");
@@ -28,26 +28,42 @@ public class Jeu {
 
     private void choisirBouftou() {
         try {
-            System.out.println("Choisissez un Bouftou :");
-            String sql = "SELECT id, nom FROM Bouftou WHERE nom IN ('Paul', 'John')";
+            System.out.println("Choisissez un Bouftou existant ou créez-en un nouveau :");
+            String sql = "SELECT id, nom FROM Bouftou";
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery(sql);
+            System.out.println("Bouftous disponibles :");
             while (rs.next()) {
                 System.out.println("ID " + rs.getInt("id") + ": " + rs.getString("nom"));
             }
-            System.out.println("Entrez l'ID du Bouftou à charger (1 pour Paul, 2 pour John) :");
+            System.out.println("Entrez l'ID d'un Bouftou existant (ex. 1 pour Paul) ou 0 pour en créer un nouveau :");
             int id = Integer.parseInt(scanner.nextLine());
-            chargerBouftou(id);
+            if (id == 0) {
+                creerNouveauBouftou();
+            } else {
+                chargerBouftou(id);
+            }
         } catch (SQLException e) {
             System.out.println("Erreur affichage Bouftous : " + e.getMessage());
             bouftou = new Bouftou();
         }
     }
 
-    public void sauvegarderBouftou() {
+    private void creerNouveauBouftou() {
         try {
-            System.out.println("Entrez un nom pour votre Bouftou :");
+            System.out.println("Entrez un nom pour votre nouveau Bouftou :");
             String nom = scanner.nextLine();
+            String checkSql = "SELECT COUNT(*) FROM Bouftou WHERE nom = ?";
+            PreparedStatement checkStmt = conn.prepareStatement(checkSql);
+            checkStmt.setString(1, nom);
+            ResultSet rs = checkStmt.executeQuery();
+            rs.next();
+            if (rs.getInt(1) > 0) {
+                System.out.println("Ce nom existe déjà ! Chargez-le ou choisissez un autre nom.");
+                choisirBouftou();
+                return;
+            }
+            bouftou = new Bouftou();
             String sql = "INSERT INTO Bouftou (nom, satiete, energie, humeur) VALUES (?, ?, ?, ?)";
             PreparedStatement pstmt = conn.prepareStatement(sql);
             pstmt.setString(1, nom);
@@ -55,9 +71,10 @@ public class Jeu {
             pstmt.setInt(3, bouftou.getEnergie());
             pstmt.setInt(4, bouftou.getHumeur());
             pstmt.executeUpdate();
-            System.out.println("Bouftou sauvegardé : " + nom);
+            System.out.println("Nouveau Bouftou créé : " + nom);
         } catch (SQLException e) {
-            System.out.println("Erreur sauvegarde : " + e.getMessage());
+            System.out.println("Erreur création Bouftou : " + e.getMessage());
+            bouftou = new Bouftou();
         }
     }
 
@@ -75,11 +92,49 @@ public class Jeu {
                 System.out.println("Bouftou chargé : " + rs.getString("nom"));
             } else {
                 System.out.println("Bouftou non trouvé pour l'ID " + id + ". Création d'un nouveau Bouftou.");
-                bouftou = new Bouftou();
+                creerNouveauBouftou();
             }
         } catch (SQLException e) {
             System.out.println("Erreur chargement : " + e.getMessage());
-            bouftou = new Bouftou(); 
+            bouftou = new Bouftou();
+        }
+    }
+
+    public void sauvegarderBouftou() {
+        try {
+            System.out.println("Entrez le nom du Bouftou à sauvegarder :");
+            String nom = scanner.nextLine();
+            String checkSql = "SELECT id FROM Bouftou WHERE nom = ?";
+            PreparedStatement checkStmt = conn.prepareStatement(checkSql);
+            checkStmt.setString(1, nom);
+            ResultSet rs = checkStmt.executeQuery();
+            if (rs.next()) {
+                int id = rs.getInt("id");
+                String sql = "UPDATE Bouftou SET satiete = ?, energie = ?, humeur = ? WHERE id = ?";
+                PreparedStatement pstmt = conn.prepareStatement(sql);
+                pstmt.setInt(1, bouftou.getSatiete());
+                pstmt.setInt(2, bouftou.getEnergie());
+                pstmt.setInt(3, bouftou.getHumeur());
+                pstmt.setInt(4, id);
+                int rowsAffected = pstmt.executeUpdate();
+                if (rowsAffected > 0) {
+                    System.out.println("Bouftou mis à jour : " + nom);
+                } else {
+                    System.out.println("Erreur lors de la mise à jour.");
+                }
+            } else {
+
+                String sql = "INSERT INTO Bouftou (nom, satiete, energie, humeur) VALUES (?, ?, ?, ?)";
+                PreparedStatement pstmt = conn.prepareStatement(sql);
+                pstmt.setString(1, nom);
+                pstmt.setInt(2, bouftou.getSatiete());
+                pstmt.setInt(3, bouftou.getEnergie());
+                pstmt.setInt(4, bouftou.getHumeur());
+                pstmt.executeUpdate();
+                System.out.println("Nouveau Bouftou sauvegardé : " + nom);
+            }
+        } catch (SQLException e) {
+            System.out.println("Erreur sauvegarde : " + e.getMessage());
         }
     }
 
@@ -87,18 +142,10 @@ public class Jeu {
         System.out.println("Bienvenue dans Tamagotchi Bouftou Virtuel !");
         boolean jeuEnCours = true;
         while (jeuEnCours) {
-            bouftou.diminuerStats();
             bouftou.afficherStats();
-
-            if (bouftou.estEnFuite()) {
-                System.out.println("Votre Bouftou s'est enfui ! Réinitialisation...");
-                bouftou = new Bouftou();
-                continue;
-            }
-
             System.out.println("Que voulez-vous faire ? (manger/dormir/jouer/sauvegarder/charger/quitter)");
             String choix = scanner.nextLine().toLowerCase();
-
+    
             switch (choix) {
                 case "manger":
                     sac.afficherContenu();
@@ -108,18 +155,18 @@ public class Jeu {
                     if (nourriture != null && nourriture.getType().equals("nourriture")) {
                         bouftou.manger(nourriture);
                         System.out.println("Bouftou a mangé " + nourriture.getNom() + " !");
-                        bouftou.afficherStats();
+                        bouftou.afficherStats(); 
                     } else {
                         System.out.println("Objet non trouvé ou non comestible.");
                     }
                     break;
-
+    
                 case "dormir":
                     bouftou.dormir();
                     System.out.println("Bouftou a dormi !");
                     bouftou.afficherStats();
                     break;
-
+    
                 case "jouer":
                     sac.afficherContenu();
                     System.out.println("Choisissez un objet pour jouer (Ballon de tennis/Ballon de foot) :");
@@ -133,22 +180,28 @@ public class Jeu {
                         System.out.println("Objet non trouvé ou non jouable.");
                     }
                     break;
-
+    
                 case "sauvegarder":
                     sauvegarderBouftou();
                     break;
-
-                case "changer":
-                    choisirBouftou(); 
+    
+                case "charger":
+                    choisirBouftou();
                     break;
-
+    
                 case "quitter":
                     jeuEnCours = false;
                     System.out.println("Au revoir !");
                     break;
-
+    
                 default:
                     System.out.println("Commande invalide.");
+            }
+    
+            bouftou.diminuerStats(); 
+            if (bouftou.estEnFuite()) {
+                System.out.println("Votre Bouftou s'est enfui ! Réinitialisation...");
+                bouftou = new Bouftou();
             }
         }
         try {

@@ -169,7 +169,7 @@ public class Jeu {
     
                 case "jouer":
                     sac.afficherContenu();
-                    System.out.println("Choisissez un objet pour jouer (Ballon de tennis/Ballon de foot) :");
+                    System.out.println("Choisissez un objet pour jouer (Balle de tennis/Ballon de foot) :");
                     String objetJouer = scanner.nextLine();
                     Objet jouet = sac.getObjet(objetJouer);
                     if (jouet != null && jouet.getType().equals("jouet")) {

@@ -4,9 +4,9 @@ public class Bouftou {
     private int humeur;
 
     public Bouftou() {
-        this.satiete = 100;
-        this.energie = 100;
-        this.humeur = 100;
+        this.satiete = 50;
+        this.energie = 50;
+        this.humeur = 50;
     }
 
     public void diminuerStats() {
@@ -43,4 +43,14 @@ public class Bouftou {
         System.out.println("Énergie: " + energie + "/100");
         System.out.println("Humeur: " + humeur + "/100");
     }
+
+    // Getters
+    public int getSatiete() { return satiete; }
+    public int getEnergie() { return energie; }
+    public int getHumeur() { return humeur; }
+
+    // Setters
+    public void setSatiete(int satiete) { this.satiete = Math.min(100, Math.max(0, satiete)); }
+    public void setEnergie(int energie) { this.energie = Math.min(100, Math.max(0, energie)); }
+    public void setHumeur(int humeur) { this.humeur = Math.min(100, Math.max(0, humeur)); }
 }
